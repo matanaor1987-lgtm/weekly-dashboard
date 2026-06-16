@@ -203,7 +203,7 @@ html,body { width:100%; height:100%; background:var(--bg); overflow:hidden; font
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script>
+<script type="module">
 let RAW={
   weeks:    [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
   failures: [2.3,1.7,2.6,2.9,2.2,2.7,2.1,1.5,1.4,0.5,0.8,1.4,4.8,1.7,1.5,2.2,1.4,1.9,2.2,3.3,2.9,3.2,2.8,2.2],
@@ -216,10 +216,37 @@ let NOTES={};
 
 function curWeek(){ return RAW.weeks.length?RAW.weeks[RAW.weeks.length-1]:0; }
 function getQ(w){ return w<=13?1:w<=26?2:w<=39?3:4; }
-function loadData(){ try{const d=JSON.parse(localStorage.getItem('dhl_v12')||'{}');if(d.RAW)RAW=d.RAW;if(d.NOTES)NOTES=d.NOTES;}catch(e){} }
+// ── FIREBASE ─────────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC_CVEU-E8TFfQkeDS2lJOc3zJDhBx-cR0",
+  authDomain: "dhl-weekly-dashboard.firebaseapp.com",
+  databaseURL: "https://dhl-weekly-dashboard-default-rtdb.firebaseio.com",
+  projectId: "dhl-weekly-dashboard",
+  storageBucket: "dhl-weekly-dashboard.firebasestorage.app",
+  messagingSenderId: "189897481146",
+  appId: "1:189897481146:web:20f698f8809b36eb691b83"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db = getDatabase(fbApp);
+
+function loadData(){
+  onValue(ref(db, 'dashboard'), (snap) => {
+    if(snap.exists()){
+      const d = snap.val();
+      if(d.RAW) RAW = d.RAW;
+      if(d.NOTES) NOTES = d.NOTES;
+    }
+    renderAll();
+  });
+}
+
 function doSave(){
   NOTES[curWeek()]=document.getElementById('notesArea').value;
-  localStorage.setItem('dhl_v12',JSON.stringify({RAW,NOTES}));
+  set(ref(db, 'dashboard'), {RAW, NOTES});
   const b=document.querySelector('.btn-white');
   b.textContent='✅ נשמר';setTimeout(()=>b.textContent='💾 שמור',1800);
 }
@@ -399,7 +426,7 @@ function renderAll(){
   const{labels,isQ,S}=buildSeries();
   renderKPIs();renderCharts(labels,isQ,S);loadNotes();
 }
-loadData();renderAll();
+loadData(); // Firebase onValue handles renderAll
 </script>
 </body>
 </html>
