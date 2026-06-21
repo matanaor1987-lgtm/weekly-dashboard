@@ -321,8 +321,8 @@ const sepPlugin={id:'sep',afterDraw(chart){
       ctx.save();ctx.setLineDash([4,3]);ctx.strokeStyle='rgba(255,204,0,0.4)';ctx.lineWidth=1.5;
       ctx.beginPath();ctx.moveTo(x,chartArea.top);ctx.lineTo(x,chartArea.bottom);ctx.stroke();
       ctx.setLineDash([]);ctx.font='bold 8px Segoe UI,Arial,sans-serif';ctx.fillStyle='rgba(255,204,0,0.6)';
-      ctx.textAlign='left';ctx.fillText('← ממוצע רבעוני',x+3,chartArea.top+9);
-      ctx.textAlign='right';ctx.fillText('שבועי',x-3,chartArea.top+9);ctx.restore();
+      ctx.textAlign='left';ctx.fillText('שבועי →',x+3,chartArea.top+9);
+      ctx.textAlign='right';ctx.fillText('← ממוצע רבעוני',x-3,chartArea.top+9);ctx.restore();
     }
   }
 }};
