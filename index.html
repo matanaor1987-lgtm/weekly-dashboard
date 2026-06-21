@@ -427,6 +427,13 @@ function renderAll(){
   renderKPIs();renderCharts(labels,isQ,S);loadNotes();
 }
 loadData(); // Firebase onValue handles renderAll
+
+// ── חיבור הפונקציות ל-window כדי שכפתורי onclick ב-HTML יוכלו לקרוא להן ──
+// (חובה כי <script type="module"> מבודד את המשתנים מהיקף הגלובלי)
+window.openInput = openInput;
+window.closeInput = closeInput;
+window.addWeek = addWeek;
+window.doSave = doSave;
 </script>
 </body>
 </html>
