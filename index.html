@@ -118,6 +118,7 @@ html,body { width:100%; height:100%; background:var(--bg); overflow:hidden; font
       <span class="hdr-title">דות ביצועים שבועי — Import Customs</span>
     </div>
     <div class="hdr-right">
+      <div class="pill" id="connStatus" style="display:none;background:#DC2626;color:#fff;font-weight:700;">⚠️ אין חיבור לשרת</div>
       <div class="pill">שבוע <div class="wnum" id="wnum">24</div></div>
       <button class="btn btn-outline" onclick="openInput()">+ הזן שבוע חדש</button>
       <button class="btn btn-white" onclick="doSave()">💾 שמור</button>
@@ -252,23 +253,77 @@ function getQ(w){ return w<=13?1:w<=26?2:w<=39?3:4; }
 // ── FIREBASE ─────────────────────────────────────────────
 
 
+function showConnError(msg){
+  const el = document.getElementById('connStatus');
+  if(!el) return;
+  el.style.display = 'flex';
+  el.textContent = '⚠️ ' + msg;
+}
+function hideConnError(){
+  const el = document.getElementById('connStatus');
+  if(el) el.style.display = 'none';
+}
+
 function loadData(){
-  const db = firebase.database();
-  db.ref('dashboard').on('value', (snap) => {
-    if(snap.exists()){
-      const d = snap.val();
-      if(d.RAW) RAW = d.RAW;
-      if(d.NOTES) NOTES = d.NOTES;
-    }
+  // If Firebase never loaded (e.g. gstatic.com blocked on the network),
+  // render with the built-in fallback data immediately and show a clear error
+  // instead of silently getting stuck on it.
+  if (typeof firebase === 'undefined') {
+    showConnError('לא ניתן לטעון את Firebase (ייתכן שה-CDN חסום ברשת) — מוצג מידע ישן בלבד');
     renderAll();
-  });
+    return;
+  }
+
+  let loaded = false;
+  const timeoutId = setTimeout(() => {
+    if (!loaded) {
+      showConnError('אין תגובה מהשרת — בודק חיבור... (מוצג מידע ישן בלבד)');
+    }
+  }, 6000);
+
+  try {
+    const db = firebase.database();
+    db.ref('dashboard').on('value', (snap) => {
+      loaded = true;
+      clearTimeout(timeoutId);
+      hideConnError();
+      if(snap.exists()){
+        const d = snap.val();
+        if(d.RAW) RAW = d.RAW;
+        if(d.NOTES) NOTES = d.NOTES;
+      }
+      renderAll();
+    }, (err) => {
+      clearTimeout(timeoutId);
+      console.error('Firebase read failed:', err);
+      showConnError('שגיאת חיבור לשרת: ' + (err && err.message ? err.message : err));
+      renderAll(); // still show whatever data we have (fallback or last-known)
+    });
+  } catch(err) {
+    clearTimeout(timeoutId);
+    console.error('Firebase init failed:', err);
+    showConnError('שגיאה בטעינת Firebase — ' + (err && err.message ? err.message : err));
+    renderAll();
+  }
 }
 
 function doSave(){
   NOTES[curWeek()]=document.getElementById('notesArea').value;
-  firebase.database().ref('dashboard').set({RAW, NOTES});
   const b=document.querySelector('.btn-white');
-  b.textContent='✅ נשמר';setTimeout(()=>b.textContent='💾 שמור',1800);
+  if (typeof firebase === 'undefined') {
+    showConnError('לא ניתן לשמור — אין חיבור ל-Firebase');
+    return;
+  }
+  firebase.database().ref('dashboard').set({RAW, NOTES})
+    .then(() => {
+      hideConnError();
+      b.textContent='✅ נשמר';setTimeout(()=>b.textContent='💾 שמור',1800);
+    })
+    .catch((err) => {
+      console.error('Firebase save failed:', err);
+      showConnError('השמירה נכשלה: ' + (err && err.message ? err.message : err));
+      b.textContent='❌ שגיאה';setTimeout(()=>b.textContent='💾 שמור',2500);
+    });
 }
 function loadNotes(){ document.getElementById('notesArea').value=NOTES[curWeek()]||''; }
 function openInput(){ document.getElementById('inp-week').value=curWeek()+1; document.getElementById('inputPanel').classList.add('open'); }
